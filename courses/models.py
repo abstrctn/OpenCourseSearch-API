@@ -160,7 +160,7 @@ class Course(models.Model):
   ##
   # Intelligent casing
   def smart_name(self):
-    return title(self.name)
+    return title(self.name).strip()
   
   ##
   # Sometimes, schools will put what's really the class description in the "notes" field

@@ -75,7 +75,7 @@ class CourseIndex(RealTimeSearchIndex):
           'id': section.id,
           'reference_code': section.reference_code,
           'number': section.number,
-          'name': section.name,
+          'name': section.name.strip(),
           'status': {
             'label': section.status,
             'seats': {
@@ -135,7 +135,7 @@ class SessionIndex(SearchIndex):
       'colleges': [
         {
           'slug': college.slug,
-          'name': college.name,
+          'name': college.name.strip(),
           'short_name': college.short_name,
           'id': college.id
         } for college in obj.colleges.all()
@@ -143,7 +143,7 @@ class SessionIndex(SearchIndex):
       'subjects': [
         {
           'code': classification.code,
-          'name': classification.name,
+          'name': classification.name.strip(),
           'slug': classification.slug,
           'id': classification.id,
           'college': classification.college.id if classification.college else None,
@@ -151,7 +151,7 @@ class SessionIndex(SearchIndex):
       ],
       'levels': [
         {
-          'name': level.name,
+          'name': level.name.strip(),
           'slug': level.slug,
           'id': level.id
         } for level in obj.levels.all()
