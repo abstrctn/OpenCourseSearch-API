@@ -13,42 +13,25 @@ from haystack.query import SearchQuerySet
 
 from courses.models import *
 from networks.models import Network
-from api.decorators import api_auth
+from decorators import api_auth, jsonp, parse_facets
 
 LIMIT = 20
+#@api_auth
+@jsonp
+@parse_facets
 def course(request):
   data = request.GET
   
   network = data.get('network', '')
   session = slugify(data.get('session', ''))
   query = data.get('query', '')
+  facets = data.get('facets', '')
   offset = int(data.get('offset', 0))
   
-#   qs = qs.filter(network = network, session = session)
-#   if data.get('college'): # id
-#     c = get_object_or_404(College, id=data['college'])
-#     qs = qs.filter(college = c)
-#   if data.get('subject'): # id
-#     c = get_object_or_404(Classification, id=data['subject'])
-#     qs = qs.filter(classification = c)
-#   if data.get('level'):
-#     l = get_object_or_404(Level, id=data['level'])
-#     qs = qs.filter(level = l)
-#   if data.get('query'):
-#     all_txt = data['query']
-#     filter_sets = Q(id__gt=0)
-#     for txt in all_txt.split(' '):
-#       filters = Q(description__icontains=txt) | Q(name__icontains=txt) | Q(classification__name__icontains=txt) | Q(profs__icontains=txt)
-#       try:
-#         filters = filters | Q(id=int(txt))
-#       except: pass
-#       filter_sets = filter_sets & filters
-#     qs = qs.filter(filter_sets)
-#   
-#   results = qs[offset:offset+LIMIT]
-  
-  sqs = SearchQuerySet().models(Course).filter(network=network, session=session).auto_query(query)#.filter_and(network=network, session=session)
-  
+  sqs = SearchQuerySet().models(Course).filter(network=network, session=session)
+  for facet in facets:
+    sqs = sqs.filter(**{facet: '%s' % slugify(facets[facet])})
+  sqs = sqs.auto_query(query)
   
   results = sqs[offset:offset+LIMIT]
   rendered = ",".join([r.json for r in results])
@@ -63,11 +46,12 @@ def course(request):
   dumped = json.dumps(response)
   dumped = dumped.replace('"*****"', "[%s]" %rendered)
   
-  return HttpResponse(dumped, mimetype='application/json')
+  return dumped
   #except:
   #  return HttpResponse(status=400)
 
 #@api_auth
+@jsonp
 def network(request):
   data = request.GET
   network = data.get('network')
@@ -75,13 +59,16 @@ def network(request):
   all = SearchQuerySet().models(Network)
   sqs = SearchQuerySet().models(Network).filter(slug=network)
   dumped_json = sqs[0].json
-  return HttpResponse(dumped_json, mimetype='application/json')
+  
+  return dumped_json
 
 #@api_auth
+@jsonp
 def session(request):
   data = request.GET
   network = data.get('network', '')
   session = slugify(data.get('session', ''))
   
   dumped_json = SearchQuerySet().models(Session).filter(network=network, slug=session)[0].json
-  return HttpResponse(dumped_json, mimetype='application/json')
+  
+  return dumped_json

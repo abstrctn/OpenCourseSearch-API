@@ -10,6 +10,7 @@ urlpatterns = patterns('',
   #url(r'^v0.1/session$', 'api.v01_views.session', name='api_course'),
   
   (r'^v0.1/', include('api.v01.urls')),
+  (r'^0.1/', include('api.v01.urls')),
 
   url(r'^(?P<session_slug>[-\w]+)/(?P<slugs>.+)', 'networks.views.course', name='course_detail'),
 )

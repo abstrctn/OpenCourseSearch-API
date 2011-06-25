@@ -1,6 +1,6 @@
-h1. OpenCourseSearch.org
+h1. OpenCourseSearch API
 
-OpenCourseSearch.org is a project to free the data trapped inside aging university course databases. It was born out of frustration with how difficult searching for courses can be on these systems.
+The API that powers OpenCourseSearch.org
 
 More info: http://opencoursesearch.org/about/
 

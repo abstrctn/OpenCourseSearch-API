@@ -3,6 +3,8 @@ import json
 from haystack.indexes import *
 from haystack import site
 
+from django.template.defaultfilters import slugify
+
 from courses.models import Course, Session
 
 class CourseIndex(RealTimeSearchIndex):
@@ -15,11 +17,12 @@ class CourseIndex(RealTimeSearchIndex):
   #name = CharField(model_attr='name')
   level = FacetCharField(model_attr='level')
   college = FacetCharField(model_attr='college')
-  classfication = FacetCharField(model_attr='classification')
+  subject = FacetCharField(model_attr='classification')
+  status = FacetCharField()
+  professor = MultiValueField()
   
   #description = CharField(model_attr='description')
   #number = CharField(model_attr='number')
-  #professor = CharField(model_attr='profs')
   
   def index_queryset(self):
     return Course.objects.all()
@@ -36,11 +39,24 @@ class CourseIndex(RealTimeSearchIndex):
   def prepare_college(self, obj):
     return obj.college.slug if obj.college else ''
   
-  def prepare_classification(self, obj):
-    return obj.classification.slug if obj.classsification else ''
+  def prepare_subject(self, obj):
+    return obj.classification.slug if obj.classification else ''
+  
+  def prepare_status(self, obj):
+    statuses = obj.sections.values_list('status', flat=True).distinct()
+    if "Open" in statuses:
+      return slugify("Open")
+    elif "Wait List" in statuses:
+      return slugify("Wait List")
+    else:
+      return slugify("Closed")
+  
+  def prepare_professor(self, obj):
+    return [section.prof for section in obj.sections.all()]
   
   def prepare_json(self, obj):
-    data = {'name': obj.name,
+    data = {
+      'name': obj.smart_name(),
       'id': obj.id,
       'number': obj.number,
       'classification': {
@@ -53,8 +69,7 @@ class CourseIndex(RealTimeSearchIndex):
       },
       'level': obj.level.name if obj.level else None,
       'grading': obj.grading,
-      'description': obj.description,
-      #'url': "http://%s.opencoursesearch.org%s" % (data.get('network'), obj.get_absolute_url()),
+      'description': obj.smart_description(),
       'sections': [
         {
           'id': section.id,
@@ -77,7 +92,7 @@ class CourseIndex(RealTimeSearchIndex):
           'component': section.component,
           'prof': section.prof,
           'units': section.units,
-          'notes': section.notes,
+          'notes': section.smart_notes(),
           'meets': [
             {
               'day': ", ".join([meeting.get_day_display() for meeting in meetings]),

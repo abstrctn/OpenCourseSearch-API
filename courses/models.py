@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from django.template.defaultfilters import slugify
+from django.template.defaultfilters import slugify, title
 
 import datetime, itertools
 
@@ -156,6 +156,22 @@ class Course(models.Model):
       'session_slug': self.session.slug,
       'slugs': slugs
     })
+  
+  ##
+  # Intelligent casing
+  def smart_name(self):
+    return title(self.name)
+  
+  ##
+  # Sometimes, schools will put what's really the class description in the "notes" field
+  # the section. When there is no description for a class, and every section has identical
+  # notes, display the sections' note as the course description.
+  def smart_description(self):
+    notes = self.sections.values_list('notes', flat=True).distinct()
+    if not self.description and len(notes) == 1:
+      return notes[0]
+    return self.description
+
 
 ORDERED_DAYS = ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'TBA', '')
 class Section(models.Model):
@@ -188,22 +204,6 @@ class Section(models.Model):
   location = models.CharField(max_length=100)
   room = models.CharField(max_length=20)
   
-  # could partition into fk, but being safe for speed at launch
-  meet_mon_start = models.TimeField(blank=True, null=True)
-  meet_mon_end = models.TimeField(blank=True, null=True)
-  meet_tue_start = models.TimeField(blank=True, null=True)
-  meet_tue_end = models.TimeField(blank=True, null=True)
-  meet_wed_start = models.TimeField(blank=True, null=True)
-  meet_wed_end = models.TimeField(blank=True, null=True)
-  meet_thu_start = models.TimeField(blank=True, null=True)
-  meet_thu_end = models.TimeField(blank=True, null=True)
-  meet_fri_start = models.TimeField(blank=True, null=True)
-  meet_fri_end = models.TimeField(blank=True, null=True)
-  meet_sat_start = models.TimeField(blank=True, null=True)
-  meet_sat_end = models.TimeField(blank=True, null=True)
-  meet_sun_start = models.TimeField(blank=True, null=True)
-  meet_sun_end = models.TimeField(blank=True, null=True)
-  
   objects = NetworkManager()
   
   def __unicode__(self):
@@ -229,62 +229,13 @@ class Section(models.Model):
   def get_profs(self):
     return self.prof.split(', ')
   
-  """
-  def days(self):
-    ret = []
-    if self.meet_mon_start:
-      ret.append('Mon')
-    if self.meet_tue_start:
-      ret.append('Tue')
-    if self.meet_wed_start:
-      ret.append('Wed')
-    if self.meet_thu_start:
-      ret.append('Thu')
-    if self.meet_fri_start:
-      ret.append('Fri')
-    if self.meet_sat_start:
-      ret.append('Sat')
-    if self.meet_sun_start:
-      ret.append('Sun')
-    return ", ".join(ret)
-  
-  def times(self):
-    ret = []
-    start = ''
-    end = ''
-    if self.meet_mon_start:
-      start = self.meet_mon_start
-    if self.meet_tue_start:
-      start = self.meet_tue_start
-    if self.meet_wed_start:
-      start = self.meet_wed_start
-    if self.meet_thu_start:
-      start = self.meet_thu_start
-    if self.meet_fri_start:
-      start = self.meet_fri_start
-    if self.meet_sat_start:
-      start = self.meet_sat_start
-    if self.meet_sun_start:
-      start = self.meet_sun_start
-    
-    if self.meet_mon_end:
-      end = self.meet_mon_end
-    if self.meet_tue_end:
-      end = self.meet_tue_end
-    if self.meet_wed_end:
-      end = self.meet_wed_end
-    if self.meet_thu_end:
-      end = self.meet_thu_end
-    if self.meet_fri_end:
-      end = self.meet_fri_end
-    if self.meet_sat_end:
-      end = self.meet_sat_end
-    if self.meet_sun_end:
-      end = self.meet_sun_end
-    
-    if start and end:
-      return "%s  -  %s" % (start.strftime("%I:%M %p").lstrip('0'), end.strftime("%I:%M %p").lstrip('0'))
-  """
+  ##
+  # See Course.smart_description()
+  # If this section's note is being used as the course's description, don't display a note.
+  def smart_notes(self):
+    if self.course.smart_description() == self.notes:
+      return ''
+    return self.notes
 
 DAY_CHOICES = (
   ('Mon', 'Mon'),
