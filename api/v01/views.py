@@ -26,7 +26,10 @@ def course(request):
   session = slugify(data.get('session', ''))
   query = data.get('query', '')
   facets = data.get('facets', '')
-  offset = int(data.get('offset', 0))
+  if data.get('page'):
+    offset = max(0, (int((data['page'])) - 1) * LIMIT)
+  else:
+    offset = int(data.get('offset', 0))
   
   sqs = SearchQuerySet().models(Course).filter(network=network, session=session)
   for facet in facets:
@@ -38,9 +41,11 @@ def course(request):
   
   response = {
     'offset': offset,
+    'page': (offset / LIMIT) + 1,
     'results_per_page': LIMIT,
     'total': sqs.count(),
-    'more': ((offset + 1) * LIMIT) < sqs.count(),
+    'num': len(results),
+    'more': (offset + len(results)) < sqs.count(),
     'results': "*****"
   }
   dumped = json.dumps(response)

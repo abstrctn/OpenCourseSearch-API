@@ -27,6 +27,7 @@ def jsonp(method):
     callback = request.GET.get('callback', '')
     if callback:
       response = "%s(%s)" % (callback, response)
+      return HttpResponse(response, mimetype='text/javascript')
     return HttpResponse(response, mimetype='application/json')
   return wrapper
 

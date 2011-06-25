@@ -42,14 +42,17 @@ class CourseIndex(RealTimeSearchIndex):
   def prepare_subject(self, obj):
     return obj.classification.slug if obj.classification else ''
   
-  def prepare_status(self, obj):
+  def get_status(self, obj):
     statuses = obj.sections.values_list('status', flat=True).distinct()
     if "Open" in statuses:
-      return slugify("Open")
+      return "Open"
     elif "Wait List" in statuses:
-      return slugify("Wait List")
+      return "Wait List"
     else:
-      return slugify("Closed")
+      return "Closed"
+  
+  def prepare_status(self, obj):
+    return slugify(self.get_status(obj))
   
   def prepare_professor(self, obj):
     return [section.prof for section in obj.sections.all()]
@@ -70,6 +73,7 @@ class CourseIndex(RealTimeSearchIndex):
       'level': obj.level.name if obj.level else None,
       'grading': obj.grading,
       'description': obj.smart_description(),
+      'status': self.get_status(obj),
       'sections': [
         {
           'id': section.id,
