@@ -6,11 +6,8 @@ from django.template import RequestContext
 import redis, base64
 
 from api import helpers
-
-def create(request):
-  response = helpers.create_subject(request.POST)
-  
-  return HttpResponse(response)
+from networks.models import Network
+from courses.models import Session, Course, Section
 
 def register(request):
     return render_to_response('api/register.html', {},
@@ -29,4 +26,3 @@ def register_submit(request):
       status = 'success'
     return render_to_response('api/register.html', {'msg': msg, 'status': status},
                               context_instance=RequestContext(request))
-

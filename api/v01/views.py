@@ -20,60 +20,86 @@ LIMIT = 20
 @jsonp
 @parse_facets
 def course(request):
-  data = request.GET
-  
-  network = data.get('network', '')
-  session = slugify(data.get('session', ''))
-  query = data.get('query', '')
-  facets = data.get('facets', '')
-  if data.get('page'):
-    offset = max(0, (int((data['page'])) - 1) * LIMIT)
-  else:
-    offset = int(data.get('offset', 0))
-  
-  sqs = SearchQuerySet().models(Course).filter(network=network, session=session)
-  for facet in facets:
-    sqs = sqs.filter(**{facet: '%s' % slugify(facets[facet])})
-  sqs = sqs.auto_query(query)
-  
-  results = sqs[offset:offset+LIMIT]
-  rendered = ",".join([r.json for r in results])
-  
-  response = {
-    'offset': offset,
-    'page': (offset / LIMIT) + 1,
-    'results_per_page': LIMIT,
-    'total': sqs.count(),
-    'num': len(results),
-    'more': (offset + len(results)) < sqs.count(),
-    'results': "*****"
-  }
-  dumped = json.dumps(response)
-  dumped = dumped.replace('"*****"', "[%s]" %rendered)
-  
-  return dumped
-  #except:
-  #  return HttpResponse(status=400)
+  try:
+    data = request.GET
+    
+    network = data.get('network', '')
+    session = slugify(data.get('session', ''))
+    query = data.get('query', '')
+    facets = data.get('facets', '')
+    if data.get('page'):
+      offset = max(0, (int((data['page'])) - 1) * LIMIT)
+    else:
+      offset = int(data.get('offset', 0))
+    
+    sqs = SearchQuerySet().models(Course).filter(network=network, session=session)
+    for facet in facets:
+      sqs = sqs.filter(**{facet: '%s' % slugify(facets[facet])})
+    sqs = sqs.auto_query(query)
+    
+    results = sqs[offset:offset+LIMIT]
+    #rendered = ",".join([r.object.prepare_json() for r in results])
+    rendered = ",".join([r.json for r in results])
+    
+    response = {
+      'offset': offset,
+      'page': (offset / LIMIT) + 1,
+      'results_per_page': LIMIT,
+      'total': sqs.count(),
+      'num': len(results),
+      'more': (offset + len(results)) < sqs.count(),
+      'results': "*****"
+    }
+    dumped = json.dumps(response)
+    dumped = dumped.replace('"*****"', "[%s]" %rendered)
+    
+    return dumped
+  except:
+    return HttpResponse(status=400)
 
 #@api_auth
 @jsonp
 def network(request):
-  data = request.GET
-  network = data.get('network')
-  
-  all = SearchQuerySet().models(Network)
-  sqs = SearchQuerySet().models(Network).filter(slug=network)
-  dumped_json = sqs[0].json
-  
-  return dumped_json
+  try:
+    data = request.GET
+    network = data.get('network')
+    
+    all = SearchQuerySet().models(Network)
+    sqs = SearchQuerySet().models(Network).filter(slug=network)
+    dumped_json = sqs[0].json
+    
+    return dumped_json
+  except:
+    return HttpResponse(status=400)
 
 #@api_auth
 @jsonp
 def session(request):
-  data = request.GET
-  network = data.get('network', '')
-  session = slugify(data.get('session', ''))
-  
-  dumped_json = SearchQuerySet().models(Session).filter(network=network, slug=session)[0].json
-  
-  return dumped_json
+  try:
+    data = request.GET
+    network = data.get('network', '')
+    session = slugify(data.get('session', ''))
+    
+    dumped_json = SearchQuerySet().models(Session).filter(network=network, slug=session)[0].json
+    
+    return dumped_json
+  except:
+    return HttpResponse(status=400)
+
+def bulk(request):
+  try:
+    data = request.GET
+    network = data.get('network', '')
+    session = data.get('session', '')
+    model = data.get('model', '')
+    
+    filename = '%s-%s-%s.zip' % (network, session, model)
+    zipfile = open(settings.BULK_ROOT + filename, 'r')
+      
+    response = HttpResponse(mimetype='text/csv')
+    response['Content-Disposition'] = 'attachment; filename=%s' % filename
+    response.write(zipfile.read())
+    
+    return response
+  except:
+    return Http404()
