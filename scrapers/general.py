@@ -28,12 +28,15 @@ class Scraper(object):
       self._log_error(e)
   
   def create_section(self, section_data):
-    section_data['network'] = self.network.slug
-    section_data['institution'] = self.network.institution.slug
-    section_data['session'] = self.session.id
-    self.processed += 1
-    print "*** %s sections processed." % self.processed
-    result = create_section(section_data)
+    try:
+      section_data['network'] = self.network.slug
+      section_data['institution'] = self.network.institution.slug
+      section_data['session'] = self.session.id
+      self.processed += 1
+      print "*** %s sections processed." % self.processed
+      result = create_section(section_data)
+    except Exception, e:
+      self._log_error("%s:\n%s\n\n" % (e, section_data))
 
   def _optional(self, l):
     try:

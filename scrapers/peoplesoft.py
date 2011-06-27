@@ -151,7 +151,7 @@ class PeopleSoftScraperV2(PeopleSoftScraper):
         try:
           self.process_section(class_index, section_index)
         except Exception, e:
-          self._log_error(e)
+          self._log_error("%s: %s\n" % (class_index + " " + section_index , e))
         self.params.update({'ICAction': 'CLASS_SRCH_WRK2_SSR_PB_BACK'})
         self._click(self.scrape_url, self.params, soupify=False)
       
