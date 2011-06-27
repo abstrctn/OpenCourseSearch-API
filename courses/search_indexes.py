@@ -42,22 +42,15 @@ class CourseIndex(RealTimeSearchIndex):
   def prepare_subject(self, obj):
     return obj.classification.slug if obj.classification else ''
   
-  def get_status(self, obj):
-    statuses = obj.sections.values_list('status', flat=True).distinct()
-    if "Open" in statuses:
-      return "Open"
-    elif "Wait List" in statuses:
-      return "Wait List"
-    else:
-      return "Closed"
-  
   def prepare_status(self, obj):
-    return slugify(self.get_status(obj))
+    return slugify(obj.get_status())
   
   def prepare_professor(self, obj):
     return [section.prof for section in obj.sections.all()]
   
   def prepare_json(self, obj):
+    return obj.prepare_json()
+    """
     data = {
       'name': obj.smart_name(),
       'id': obj.id,
@@ -109,7 +102,19 @@ class CourseIndex(RealTimeSearchIndex):
         } for section in obj.sections.all()
       ]
     }
+    
+    available_stats = {}
+    for field in ['number', 'name', 'status.label', 'status.seats', 'status.waitlist',
+                    'component', 'prof', 'units', 'notes', 'meets.day', 'meets.time',
+                    'meets.location', 'meets.room']:
+      available_stats[field] = False
+      for section in data['sections']:
+        if self.get_attr(section, field):
+          available_stats[field] = True
+    data['available_stats'] = available_stats
+    
     return json.dumps(data)
+    """
 site.register(Course, CourseIndex)
 
 class SessionIndex(SearchIndex):

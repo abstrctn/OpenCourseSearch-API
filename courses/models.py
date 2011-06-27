@@ -2,7 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.template.defaultfilters import slugify, title
 
-import datetime, itertools
+import datetime, itertools, json
 
 from networks.models import Network, NetworkManager
 
@@ -157,6 +157,89 @@ class Course(models.Model):
       'slugs': slugs
     })
   
+  def get_status(self):
+    statuses = self.sections.values_list('status', flat=True).distinct()
+    if "Open" in statuses:
+      return "Open"
+    elif "Wait List" in statuses:
+      return "Wait List"
+    else:
+      return "Closed"
+  
+  def prepare_json(self):
+    data = {
+      'name': self.smart_name(),
+      'id': self.id,
+      'number': self.number,
+      'classification': {
+        'code': self.classification.code,
+        'name': self.classification.name,
+        'college': {
+          'name': self.college.name,
+          'slug': self.college.slug,
+        } if self.college else None
+      },
+      'level': self.level.name if self.level else None,
+      'grading': self.grading,
+      'description': self.smart_description(),
+      'status': self.get_status(),
+      'sections': [
+        {
+          'id': section.id,
+          'reference_code': section.reference_code,
+          'number': section.number,
+          'name': section.name.strip(),
+          'status': {
+            'label': section.status,
+            'seats': {
+              'total': section.seats_capacity,
+              'taken': section.seats_taken,
+              'available': section.seats_available
+            } if section.seats_taken else None,
+            'waitlist': {
+              'total': section.waitlist_capacity,
+              'taken': section.waitlist_taken,
+              'available': section.waitlist_available
+            } if section.waitlist_capacity or section.waitlist_taken else None
+          },
+          'component': section.component,
+          'prof': section.prof,
+          'units': section.units,
+          'notes': section.smart_notes(),
+          'meets': [
+            {
+              'day': ", ".join([meeting.get_day_display() for meeting in meetings]),
+              'start': meetings[0].start.strftime('%I:%M %p') if meetings and meetings[0].start else None,
+              'end': meetings[0].end.strftime('%I:%M %p') if meetings and meetings[0].end else None,
+              'location': meetings[0].location if meetings else None,
+              'room': meetings[0].room if meetings else None,
+            } for meetings in section.grouped_meetings()
+          ]
+        } for section in self.sections.all()
+      ]
+    }
+    
+    available_stats = {}
+    for field in ['number', 'name', 'status.label', 'status.seats', 'status.waitlist',
+                    'component', 'prof', 'units', 'notes', 'meets.day', 'meets.start',
+                    'meets.end', 'meets.location', 'meets.room', 'component']:
+      available_stats[field] = False
+      for section in data['sections']:
+        if self.get_attr(section, field):
+          available_stats[field] = True
+    data['available_stats'] = available_stats
+    
+    return json.dumps(data)
+  
+  def get_attr(self, section, attribute_string):
+    obj = section
+    for attr in attribute_string.split('.'):
+      if type(obj) == list:
+        obj = [item.get(attr) for item in obj if item.get(attr)]
+      else:
+        obj = obj.get(attr)
+    return obj
+  
   ##
   # Intelligent casing
   def smart_name(self):
@@ -167,10 +250,11 @@ class Course(models.Model):
   # the section. When there is no description for a class, and every section has identical
   # notes, display the sections' note as the course description.
   def smart_description(self):
+    desc_bits = [self.description]
     notes = self.sections.values_list('notes', flat=True).distinct()
-    if not self.description and len(notes) == 1:
-      return notes[0]
-    return self.description
+    if len(notes) == 1:
+      desc_bits.append(notes[0])
+    return " ".join(desc_bits)
 
 
 ORDERED_DAYS = ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'TBA', '')
@@ -233,7 +317,7 @@ class Section(models.Model):
   # See Course.smart_description()
   # If this section's note is being used as the course's description, don't display a note.
   def smart_notes(self):
-    if self.course.smart_description() == self.notes:
+    if len(self.course.sections.values_list('notes', flat=True).distinct()) == 1:
       return ''
     return self.notes
 
