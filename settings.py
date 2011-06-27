@@ -3,9 +3,6 @@ from local_settings import *
 import os
 settings_dir = os.path.dirname(__file__)
 
-DEBUG = True
-TEMPLATE_DEBUG = DEBUG
-
 MANAGERS = ADMINS
 
 TIME_ZONE = 'America/Chicago'
